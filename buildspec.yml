@@ -1,33 +1,26 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
-      - aws --version
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 715841334721.dkr.ecr.us-east-1.amazonaws.com
-      - REPOSITORY_URI=715841334721.dkr.ecr.us-east-1.amazonaws.com/python-api
-      - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
+      - echo Logging in to Amazon ECR in $AWS_DEFAULT_REGION...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 715841334721.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
   build:
     commands:
-      - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:latest .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - docker build -t python-api .
+      - docker tag python-api:latest 715841334721.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/python-api:latest
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing to repo...
-      - docker push $REPOSITORY_URI:latest
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Writing image definitions file...
-      - DOCKER_CONTAINER_NAME=python-api-cont
-      - printf '[{"name":"%s","imageUri":"%s"}]' $DOCKER_CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-      - echo $DOCKER_CONTAINER_NAME
-      - echo Printing imagedefinitions.json
-      - cat imagedefinitions.json
+      - echo Pushing Docker image to ECR...
+      - docker push 715841334721.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/python-api:latest
+      - echo Writing imagedefinitions.json...
+      - printf '[{"name":"python-api-container","imageUri":"%s"}]' 715841334721.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/python-api:latest > imagedefinitions.json
 
 artifacts:
   files:
     - imagedefinitions.json
-
